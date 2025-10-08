@@ -43,7 +43,10 @@ if 'analysis_complete' not in st.session_state:
     st.session_state.analysis_complete = False
 
 # GROQ API KEY - ULTRA FAST & FREE
-GROQ_API_KEY = "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"
+try:
+    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+except:
+    GROQ_API_KEY = "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"  # Local dev only
 
 def get_ai_market_insights(location, property_data):
     """Get comprehensive AI-generated market insights via Groq (FASTEST)"""
@@ -810,4 +813,5 @@ if st.session_state.analysis_complete:
     
     st.markdown('<div class="section-title">📄 AI-Generated Investment Report</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="card">{report}</div>', unsafe_allow_html=True)
+
 
