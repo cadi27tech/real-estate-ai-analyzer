@@ -673,8 +673,8 @@ def create_gauge(value, title):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
-        title={'text': title, 'font': {'size': 18, 'color': '#64748b', 'weight': 700}},
-        number={'font': {'size': 42, 'color': '#0f172a', 'weight': 900}},
+        title={'text': title, 'font': {'size': 18, 'color': '#64748b'}},
+        number={'font': {'size': 42, 'color': '#0f172a'}},
         gauge={'axis': {'range': [0, 100]}, 'bar': {'color': color}, 'steps': [{'range': [0, 65], 'color': '#fee2e2'}, {'range': [65, 80], 'color': '#fef3c7'}, {'range': [80, 100], 'color': '#d1fae5'}]}
     ))
     fig.update_layout(height=240, margin=dict(l=20, r=20, t=70, b=20), paper_bgcolor='rgba(0,0,0,0)')
@@ -810,6 +810,7 @@ if st.session_state.analysis_complete:
     
     st.markdown('<div class="section-title">📄 AI-Generated Investment Report</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="card">{report}</div>', unsafe_allow_html=True)
+
 
 
 
