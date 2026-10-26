@@ -6,6 +6,9 @@ import time
 from datetime import datetime
 import requests
 import json
+import os
+
+from finance import investment_metrics
 
 st.set_page_config(page_title="Real Estate AI Analyzer", page_icon="🏠", layout="wide", initial_sidebar_state="collapsed")
 
@@ -43,7 +46,10 @@ if 'analysis_complete' not in st.session_state:
     st.session_state.analysis_complete = False
 
 # GROQ API KEY - ULTRA FAST & FREE
-GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
+try:
+    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
+except FileNotFoundError:  # no .streamlit/secrets.toml: fall back to the environment, else generic market notes
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 def get_ai_market_insights(location, property_data):
     """Get comprehensive AI-generated market insights via Groq (FASTEST)"""
@@ -157,65 +163,44 @@ def generate_professional_report(data, market_insights, currency_symbol, propert
     market_avg = market_insights['price_per_sqft_median']
     market_diff = ((data['price_per_sqft'] - market_avg) / market_avg) * 100
     
-    # OPTIMIZED RENTAL INCOME
-    est_rental = int(data['price'] * 0.0085)
-    
-    # MORTGAGE CALCULATION
-    principal = data['price'] * 0.80
-    monthly_rate = 0.07 / 12
-    n_payments = 360
-    mortgage_payment = int(principal * (monthly_rate * (1 + monthly_rate)**n_payments) / ((1 + monthly_rate)**n_payments - 1))
-    
-    # OPERATING EXPENSES - APARTMENT VS HOUSE
-    property_tax_monthly = int(data['price'] * 0.012 / 12)
-    insurance_monthly = int(data['price'] * (0.004 if is_apartment else 0.006) / 12)
-    hoa_monthly = 250 if is_apartment else 10
-    maintenance_monthly = int(data['price'] * (0.005 if is_apartment else 0.01) / 12)
-    
-    # Calculate house maintenance for comparison
-    house_maintenance_monthly = int(data['price'] * 0.01 / 12)
-    house_insurance_monthly = int(data['price'] * 0.006 / 12)
-    
-    total_monthly_expense = mortgage_payment + property_tax_monthly + insurance_monthly + hoa_monthly + maintenance_monthly
-    
-    # NET CASH FLOW
-    vacancy_loss = int(est_rental * 0.08)
-    effective_rental = est_rental - vacancy_loss
-    monthly_cash_flow = effective_rental - total_monthly_expense
-    annual_cash_flow = monthly_cash_flow * 12
-    
-    # CAP RATE
-    annual_rental_income = est_rental * 12
-    annual_operating_expenses = (property_tax_monthly + insurance_monthly + hoa_monthly + maintenance_monthly + vacancy_loss) * 12
-    noi = annual_rental_income - annual_operating_expenses
-    cap_rate = (noi / data['price']) * 100
-    
-    # INVESTMENT METRICS
-    down_payment = data['price'] * 0.20
-    closing_costs = data['price'] * 0.03
-    total_investment = down_payment + closing_costs
-    
-    cash_on_cash = (annual_cash_flow / total_investment) * 100
-    
-    # APPRECIATION & RETURNS
-    annual_interest_paid = principal * 0.07
-    annual_mortgage_paid = mortgage_payment * 12
-    annual_principal_paydown = int(annual_mortgage_paid - annual_interest_paid)
-    
-    appreciation_rate = market_insights['appreciation_rate']
-    appreciation_annual = int(data['price'] * (appreciation_rate / 100))
-    total_annual_wealth = appreciation_annual + annual_cash_flow + annual_principal_paydown
-    total_return_pct = (total_annual_wealth / total_investment) * 100
-    
-    # 5-YEAR PROJECTIONS
-    equity_year_1 = total_investment + appreciation_annual + annual_cash_flow + annual_principal_paydown
-    total_5yr_appreciation = int(data['price'] * (((1 + appreciation_rate/100)**5) - 1))
-    total_5yr_cashflow = annual_cash_flow * 5
-    total_5yr_principal = annual_principal_paydown * 5
-    total_5yr_wealth = total_5yr_appreciation + total_5yr_cashflow + total_5yr_principal
-    roi_5yr = (total_5yr_wealth / total_investment) * 100
-    
-    breakeven_years = round(total_investment / total_annual_wealth, 1) if total_annual_wealth > 0 else 999
+    # All figures come from finance.py (deterministic); the model only supplies market context.
+    m = investment_metrics(data['price'], is_apartment, market_insights['appreciation_rate'])
+    est_rental = m['est_rental']
+    principal = m['principal']
+    mortgage_payment = m['mortgage_payment']
+    property_tax_monthly = m['property_tax_monthly']
+    insurance_monthly = m['insurance_monthly']
+    hoa_monthly = m['hoa_monthly']
+    maintenance_monthly = m['maintenance_monthly']
+    house_maintenance_monthly = m['house_maintenance_monthly']
+    house_insurance_monthly = m['house_insurance_monthly']
+    total_monthly_expense = m['total_monthly_expense']
+    vacancy_loss = m['vacancy_loss']
+    effective_rental = m['effective_rental']
+    monthly_cash_flow = m['monthly_cash_flow']
+    annual_cash_flow = m['annual_cash_flow']
+    annual_rental_income = m['annual_rental_income']
+    annual_operating_expenses = m['annual_operating_expenses']
+    noi = m['noi']
+    cap_rate = m['cap_rate']
+    down_payment = m['down_payment']
+    closing_costs = m['closing_costs']
+    total_investment = m['total_investment']
+    cash_on_cash = m['cash_on_cash']
+    annual_interest_paid = m['annual_interest_paid']
+    annual_mortgage_paid = m['annual_mortgage_paid']
+    annual_principal_paydown = m['annual_principal_paydown']
+    appreciation_rate = m['appreciation_rate']
+    appreciation_annual = m['appreciation_annual']
+    total_annual_wealth = m['total_annual_wealth']
+    total_return_pct = m['total_return_pct']
+    equity_year_1 = m['equity_year_1']
+    total_5yr_appreciation = m['total_5yr_appreciation']
+    total_5yr_cashflow = m['total_5yr_cashflow']
+    total_5yr_principal = m['total_5yr_principal']
+    total_5yr_wealth = m['total_5yr_wealth']
+    roi_5yr = m['roi_5yr']
+    breakeven_years = m['breakeven_years']
     
     # Extract city and state
     location_parts = data['location'].split(',')
@@ -250,7 +235,7 @@ def generate_professional_report(data, market_insights, currency_symbol, propert
 
 <h3 style="color: #475569; font-size: 1.3rem; font-weight: 700; margin: 1.5rem 0 1rem;">Detailed Price Intelligence</h3>
 
-<p>The {prop_label}'s pricing at <strong>{currency_symbol}{data['price_per_sqft']:,}/sqft</strong> aligns strategically with {city}'s current market dynamics. Recent market data from October 2025 shows:</p>
+<p>The {prop_label}'s pricing at <strong>{currency_symbol}{data['price_per_sqft']:,}/sqft</strong> aligns strategically with {city}'s current market dynamics. Model-estimated market context (Llama 3.3 via Groq, not verified data):</p>
 
 <ul style="line-height: 2;">
 <li><strong>{city} Median Home Value</strong>: {currency_symbol}{market_insights['median_home_value']:,} ({market_insights['yoy_change']:+.1f}% YoY)</li>
@@ -346,7 +331,7 @@ def generate_professional_report(data, market_insights, currency_symbol, propert
 
 <h3 style="color: #475569; font-size: 1.3rem; font-weight: 700; margin: 1.5rem 0 1rem;">5-Year Financial Projections ({city} Market Data)</h3>
 
-<p>Using actual {city} appreciation rate of <strong>{appreciation_rate:.1f}% annually</strong> (verified October 2025 data):</p>
+<p>Using actual {city} appreciation rate of <strong>{appreciation_rate:.1f}% annually</strong> (model estimate, not verified data):</p>
 
 <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
 <thead>
@@ -481,7 +466,7 @@ def generate_professional_report(data, market_insights, currency_symbol, propert
 
 <h3 style="color: #475569; font-size: 1.3rem; font-weight: 700; margin: 1.5rem 0 1rem;">Economic & Demographic Fundamentals</h3>
 
-<p><strong>Employment & Economy (Q3 2025 Data):</strong></p>
+<p><strong>Employment & Economy (model estimate):</strong></p>
 <ul style="line-height: 2;">
 <li><strong>Major Employers</strong>: {', '.join(market_insights['key_employers'])}</li>
 <li><strong>Employment Sectors</strong>: {', '.join(market_insights['major_sectors'])}</li>
@@ -500,7 +485,7 @@ def generate_professional_report(data, market_insights, currency_symbol, propert
 <li><strong>Homeownership</strong>: {market_insights['homeownership_rate']}% citywide</li>
 </ul>
 
-<h3 style="color: #475569; font-size: 1.3rem; font-weight: 700; margin: 1.5rem 0 1rem;">Real Estate Market Conditions (October 2025)</h3>
+<h3 style="color: #475569; font-size: 1.3rem; font-weight: 700; margin: 1.5rem 0 1rem;">Real Estate Market Conditions (model estimate)</h3>
 
 <p><strong>Current Market Snapshot:</strong></p>
 <ul style="line-height: 2;">
@@ -652,7 +637,7 @@ def generate_professional_report(data, market_insights, currency_symbol, propert
 <p style="color: #64748b; font-size: 0.9rem;"><em>🏠 Property: {data['address']}, {data['location']} ({prop_label_cap})</em></p>
 <p style="color: #64748b; font-size: 0.9rem;"><em>💼 Analyst: Adrian Capraru | COO & Product Leader | Wharton FinTech Certified</em></p>
 <p style="color: #64748b; font-size: 0.9rem;"><em>🤖 AI-Powered Analysis: Groq LLaMA 3.3 70B</em></p>
-<p style="color: #64748b; font-size: 0.9rem;"><em>⚠️ Disclaimer: This analysis is for informational purposes only and does not constitute financial, investment, or legal advice. All calculations are estimates based on assumptions and market data current as of October 2025. Actual results may vary significantly. Consult licensed real estate professionals, attorneys, CPAs, and financial advisors before making investment decisions. Past performance does not guarantee future results.</em></p>
+<p style="color: #64748b; font-size: 0.9rem;"><em>⚠️ Disclaimer: This analysis is for informational purposes only and does not constitute financial, investment, or legal advice. Financial figures are computed from the fixed assumptions in finance.py; market context is generated by a language model and is not verified data. Actual results may vary significantly. Consult licensed real estate professionals, attorneys, CPAs, and financial advisors before making investment decisions. Past performance does not guarantee future results.</em></p>
 """
     
     return report, overall_score, {
@@ -709,7 +694,7 @@ st.markdown('<div class="hero"><h1>🏠 Real Estate AI Analyzer</h1><p>AI-Powere
 # CONTACT
 st.markdown("""
 <div class="contact-section">
-    <p><strong>Adrian Capraru</strong> | COO & Product Leader | Wharton FinTech Certified | <a href="https://www.linkedin.com/in/adriancapraru27/" target="_blank">LinkedIn</a></p>
+    <p><strong>Adrian Capraru</strong> | Head of AI & Automation | <a href="https://cadi27tech.github.io" target="_blank">cadi27tech.github.io</a> | <a href="https://www.linkedin.com/in/adriancapraru27/" target="_blank">LinkedIn</a></p>
 </div>
 """, unsafe_allow_html=True)
 
