@@ -52,11 +52,10 @@ The model is these numbers. They live in `ASSUMPTIONS` in `finance.py`, and the 
 ```bash
 python -m venv .venv && . .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-mkdir -p .streamlit && echo 'GROQ_API_KEY = "your-key"' > .streamlit/secrets.toml   # optional; without a key the app uses generic market notes
 streamlit run app.py
 ```
 
-`.streamlit/secrets.toml` is git-ignored. `GROQ_API_KEY` can also come from the environment.
+AI market notes are bring-your-own-key: paste a Groq key in the sidebar. It is held only for that browser session and sent straight to Groq; the app has no server-side key, so a public deployment never spends anyone else's quota. Without a key the app shows generic market notes.
 
 ## History
 

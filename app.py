@@ -45,14 +45,18 @@ st.markdown("""
 if 'analysis_complete' not in st.session_state:
     st.session_state.analysis_complete = False
 
-# GROQ API KEY - ULTRA FAST & FREE
-try:
-    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
-except FileNotFoundError:  # no .streamlit/secrets.toml: fall back to the environment, else generic market notes
-    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+# Bring your own key: the public demo never spends an owner key. The visitor's key lives only in this
+# browser session and is sent straight to Groq; without one the app uses generic market notes.
+GROQ_API_KEY = st.sidebar.text_input(
+    "Groq API key (optional)", type="password",
+    help="Used only for this session to fetch AI market notes. Never stored or logged. Leave empty for generic notes.",
+).strip()
 
 def get_ai_market_insights(location, property_data):
     """Get comprehensive AI-generated market insights via Groq (FASTEST)"""
+    if not GROQ_API_KEY:
+        st.info("No Groq key entered: showing generic market notes. Add your own key in the sidebar for AI notes.")
+        return generate_generic_insights(location, property_data)
     try:
         prompt = f"""You are a real estate market analyst. Generate comprehensive market analysis for {location}.
 
